@@ -1,0 +1,1 @@
+## cpu affinity for go
