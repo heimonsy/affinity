@@ -1,7 +1,6 @@
 package affinity
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"syscall"
@@ -9,22 +8,21 @@ import (
 	"unsafe"
 )
 
-var mask [1024 / 64]uint64
+type Affinity [1024 / 64]uint64
 
-func SetMask(cpu uint) {
+func (mask *Affinity) PinCPU(cpu uint) {
 	mask[cpu/64] |= 1 << (cpu % 64)
 }
 
-func CallAffinity(pid int) error {
-	_, _, errno := syscall.RawSyscall(syscall.SYS_SCHED_SETAFFINITY, uintptr(pid), uintptr(len(mask)*8), uintptr(unsafe.Pointer(&mask)))
+func (mask *Affinity) CallAffinity(pid int) error {
+	_, _, errno := syscall.RawSyscall(syscall.SYS_SCHED_SETAFFINITY, uintptr(pid), uintptr(len(mask)*8), uintptr(unsafe.Pointer(mask)))
 	if errno != 0 {
-		fmt.Println(errno)
 		return errno
 	}
 	return nil
 }
 
-func AffinityService(pid int, duration time.Duration) {
+func (mask *Affinity) AffinityService(pid int, duration time.Duration) {
 	go func() {
 		time.Sleep(time.Second * 2)
 
@@ -50,4 +48,18 @@ func AffinityService(pid int, duration time.Duration) {
 			}
 		}
 	}()
+}
+
+var defaultMask Affinity
+
+func PinCPU(cpu uint) {
+	defaultMask.PinCPU(cpu)
+}
+
+func CallAffinity(pid int) error {
+	return defaultMask.CallAffinity(pid)
+}
+
+func AffinityService(pid int, duration time.Duration) {
+	defaultMask.AffinityService(pid, duration)
 }
